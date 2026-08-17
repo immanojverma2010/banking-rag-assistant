@@ -24,7 +24,7 @@ export async function ingestBankingData(): Promise<{ upserted: number }> {
 
     for (let i = 0; i < chunks.length; i++) {
       const response = await ai.models.embedContent({
-        model: 'gemini-embedding-2',
+        model: 'gemini-embedding-001',
         contents: [chunks[i]],
       });
 

@@ -10,7 +10,7 @@ This application implements a **Retrieval-Augmented Generation (RAG)** pipeline 
 flowchart LR
   subgraph ingest [Ingestion]
     Docs[Sample Policies] --> Split[LangChain Text Splitter]
-    Split --> Embed[gemini-embedding-2]
+    Split --> Embed[gemini-embedding-00101]
     Embed --> Pinecone[Pinecone Index]
   end
 
@@ -18,7 +18,7 @@ flowchart LR
     User[User Query] --> QEmbed[Query Embedding]
     QEmbed --> Search[Pinecone topK=3]
     Search --> Prompt[System Prompt + Context]
-    Prompt --> LLM[gemini-2.5-flash]
+    Prompt --> LLM[gemini-3.6-flash]
     LLM --> SSE[SSE Stream]
   end
 ```
@@ -26,7 +26,7 @@ flowchart LR
 ### RAG Pipeline
 
 1. **Document ingestion** — Four detailed banking policies (Accounts, Cards, Transfers, Compliance) are split into ~700-character chunks using LangChain's `RecursiveCharacterTextSplitter` (100-character overlap).
-2. **Embedding** — Each chunk is embedded with Google's `gemini-embedding-2` model via `@google/genai`.
+2. **Embedding** — Each chunk is embedded with Google's `gemini-embedding-001` model via `@google/genai`.
 3. **Vector indexing** — Embeddings are upserted to a Pinecone index (`banking-guidelines`) with metadata: `text`, `category`, and `policyId`.
 
 ### Retrieval & Generation
@@ -34,7 +34,7 @@ flowchart LR
 1. The user's latest message is embedded with the same model.
 2. Pinecone returns the top 3 most similar policy chunks (`topK: 3`, `includeMetadata: true`).
 3. Retrieved context is injected into a compliance system prompt that instructs the model to cite policy IDs and refuse transactions.
-4. `gemini-2.5-flash` generates a streaming response via the Vercel AI SDK.
+4. `gemini-3.6-flash` generates a streaming response via the Vercel AI SDK.
 
 ### SSE Streaming
 
@@ -47,7 +47,7 @@ flowchart LR
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
 | LLM | Gemini 2.5 Flash via `@ai-sdk/google` |
-| Embeddings | gemini-embedding-2 via `@google/genai` |
+| Embeddings | gemini-embedding-001 via `@google/genai` |
 | Vector DB | Pinecone (`@pinecone-database/pinecone`) |
 | Orchestration | Vercel AI SDK (`ai`, `@ai-sdk/react`) |
 | Text Splitting | LangChain (`@langchain/textsplitters`) |
@@ -75,7 +75,7 @@ PINECONE_INDEX_NAME="banking-guidelines"
 
 Create a serverless index named `banking-guidelines` with:
 
-- **Dimension**: 3072 (default output for `gemini-embedding-2`)
+- **Dimension**: 3072 (default output for `gemini-embedding-001`)
 - **Metric**: cosine
 
 ### 4. Ingest policy documents

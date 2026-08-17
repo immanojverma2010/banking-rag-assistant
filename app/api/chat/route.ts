@@ -6,7 +6,7 @@ import { convertToModelMessages, streamText, type UIMessage } from 'ai';
 async function embedText(text: string): Promise<number[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
   const response = await ai.models.embedContent({
-    model: 'gemini-embedding-2',
+    model: 'gemini-embedding-001',
     contents: [text],
   });
 
