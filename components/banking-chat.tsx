@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { Bot, Landmark, Send, ShieldCheck, User } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,32 +18,134 @@ const SUGGESTIONS = [
   'KYC renewal requirements?',
 ];
 
+type MessageBubbleProps = {
+  message: {
+    id: string;
+    role: 'user' | 'assistant' | 'system';
+    parts: Array<{ type?: string; text?: string }>;
+  };
+  isGenerating: boolean;
+};
+
+const MessageBubble = memo(function MessageBubble({ message, isGenerating }: MessageBubbleProps) {
+  if (message.role !== 'user' && message.role !== 'assistant') {
+    return null;
+  }
+
+  return (
+    <div className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+      <div
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+          message.role === 'user'
+            ? 'bg-blue-500/20 text-blue-400'
+            : 'bg-emerald-500/20 text-emerald-400'
+        }`}
+      >
+        {message.role === 'user' ? <User className="size-4" /> : <Bot className="size-4" />}
+      </div>
+      <div
+        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
+          message.role === 'user'
+            ? 'bg-blue-600/20 text-slate-100'
+            : 'bg-slate-800 text-slate-200'
+        }`}
+      >
+        {message.parts.map((part, index) => {
+          if (part.type !== 'text') return null;
+
+          return (
+            <span
+              key={`${message.id}-${index}`}
+              className={
+                message.role === 'assistant' && isGenerating
+                  ? 'typing-slow whitespace-pre-wrap'
+                  : 'whitespace-pre-wrap'
+              }
+            >
+              {part.text}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+type SuggestionPillProps = {
+  suggestion: string;
+  onClick: (value: string) => void;
+  disabled: boolean;
+};
+
+const SuggestionPill = memo(function SuggestionPill({
+  suggestion,
+  onClick,
+  disabled,
+}: SuggestionPillProps) {
+  return (
+    <button
+      key={suggestion}
+      type="button"
+      onClick={() => onClick(suggestion)}
+      disabled={disabled}
+      className="rounded-full border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-50"
+    >
+      {suggestion}
+    </button>
+  );
+});
+
 export function BankingChat() {
   const [input, setInput] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
 
-  const isGenerating = status === 'submitted' || status === 'streaming';
+  const isGenerating = useMemo(
+    () => status === 'submitted' || status === 'streaming',
+    [status],
+  );
+
+  const streamState = useMemo(() => {
+    if (status === 'submitted') return 'Sending';
+    if (status === 'streaming') return 'Streaming';
+    if (status === 'error') return 'Error';
+    if (messages.length > 0) return 'Ready';
+    return 'Idle';
+  }, [messages.length, status]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior: 'smooth',
+    });
   }, [messages, status]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const text = input.trim();
-    if (!text || isGenerating) return;
-    setInput('');
-    await sendMessage({ text });
-  }
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const text = input.trim();
+      if (!text || isGenerating) return;
+      setInput('');
+      await sendMessage({ text });
+    },
+    [input, isGenerating, sendMessage],
+  );
 
-  async function handleSuggestion(text: string) {
-    if (isGenerating) return;
-    await sendMessage({ text });
-  }
+  const handleSuggestion = useCallback(
+    async (text: string) => {
+      if (isGenerating) return;
+      await sendMessage({ text });
+    },
+    [isGenerating, sendMessage],
+  );
+
+  const suggestions = useMemo(() => SUGGESTIONS, []);
 
   return (
     <div className="flex h-full items-center justify-center bg-slate-950 p-4 text-slate-100">
@@ -63,15 +165,25 @@ export function BankingChat() {
                 </p>
               </div>
             </div>
-            <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-              <ShieldCheck className="size-3" />
-              Compliance Active
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                className={
+                  streamState === 'Error'
+                    ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                    : streamState === 'Streaming' || streamState === 'Sending'
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                }
+              >
+                <ShieldCheck className="size-3" />
+                {streamState}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
 
         <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-0">
-          <ScrollArea className="flex-1 px-4 py-4">
+          <ScrollArea viewportRef={viewportRef} className="px-4 py-4">
             <div className="flex flex-col gap-4">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
@@ -84,40 +196,7 @@ export function BankingChat() {
               )}
 
               {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-                >
-                  <div
-                    className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-                      message.role === 'user'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-emerald-500/20 text-emerald-400'
-                    }`}
-                  >
-                    {message.role === 'user' ? (
-                      <User className="size-4" />
-                    ) : (
-                      <Bot className="size-4" />
-                    )}
-                  </div>
-                  <div
-                    className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                      message.role === 'user'
-                        ? 'bg-blue-600/20 text-slate-100'
-                        : 'bg-slate-800 text-slate-200'
-                    }`}
-                  >
-                    {message.parts.map((part, index) => {
-                      if (part.type !== 'text') return null;
-                      return (
-                        <span key={`${message.id}-${index}`} className="whitespace-pre-wrap">
-                          {part.text}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
+                <MessageBubble key={message.id} message={message} isGenerating={isGenerating} />
               ))}
 
               {isGenerating && messages.at(-1)?.role !== 'assistant' && (
@@ -134,21 +213,17 @@ export function BankingChat() {
                   </div>
                 </div>
               )}
-              <div ref={bottomRef} />
             </div>
           </ScrollArea>
 
           <div className="flex flex-wrap gap-2 border-t border-slate-800 px-4 py-3">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
+            {suggestions.map((suggestion) => (
+              <SuggestionPill
                 key={suggestion}
-                type="button"
-                onClick={() => handleSuggestion(suggestion)}
+                suggestion={suggestion}
+                onClick={handleSuggestion}
                 disabled={isGenerating}
-                className="rounded-full border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-50"
-              >
-                {suggestion}
-              </button>
+              />
             ))}
           </div>
         </CardContent>

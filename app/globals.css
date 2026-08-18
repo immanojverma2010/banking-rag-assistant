@@ -128,3 +128,23 @@
     @apply font-sans;
   }
 }
+
+@keyframes typing-slow {
+  0% {
+    max-width: 0;
+    opacity: 0.4;
+    filter: blur(0.5px);
+  }
+  100% {
+    max-width: 100ch;
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.typing-slow {
+  display: inline-block;
+  overflow: hidden;
+  white-space: pre-wrap;
+  animation: typing-slow 1.8s steps(36, end) both;
+}
