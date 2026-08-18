@@ -3,6 +3,8 @@ import { GoogleGenAI } from '@google/genai';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { sampleBankingDocs } from './sample-documents';
 
+const embeddingDimension = Number(process.env.PINECONE_INDEX_DIMENSION ?? '768');
+
 export async function ingestBankingData(): Promise<{ upserted: number }> {
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
   const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
@@ -26,6 +28,9 @@ export async function ingestBankingData(): Promise<{ upserted: number }> {
       const response = await ai.models.embedContent({
         model: 'gemini-embedding-001',
         contents: [chunks[i]],
+        config: {
+          outputDimensionality: embeddingDimension,
+        },
       });
 
       const values = response.embeddings?.[0]?.values;

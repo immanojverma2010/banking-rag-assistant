@@ -69,14 +69,17 @@ Create `.env.local` in the project root:
 GOOGLE_GENERATIVE_AI_API_KEY="your-google-api-key"
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_NAME="banking-guidelines"
+PINECONE_INDEX_DIMENSION="768"
 ```
 
 ### 3. Create Pinecone index
 
 Create a serverless index named `banking-guidelines` with:
 
-- **Dimension**: 3072 (default output for `gemini-embedding-001`)
+- **Dimension**: 768
 - **Metric**: cosine
+
+This app explicitly sets `outputDimensionality: 768` in the Gemini embedding calls so the vector lengths match the Pinecone index.
 
 ### 4. Ingest policy documents
 
