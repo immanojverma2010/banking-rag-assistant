@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   const systemPrompt = `You are an official Banking Compliance Assistant. Answer using ONLY retrieved policies: ${retrievedContext}. Always cite Policy IDs like [Policy: POL-ACC-001]. Refuse transactions.`;
 
   const result = streamText({
-    model: google('gemini-2.5-flash'),
+    model: google('gemini-3.6-flash'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
   });
