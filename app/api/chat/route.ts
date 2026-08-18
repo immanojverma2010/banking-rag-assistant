@@ -3,11 +3,16 @@ import { GoogleGenAI } from '@google/genai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { convertToModelMessages, streamText, type UIMessage } from 'ai';
 
+const embeddingDimension = Number(process.env.PINECONE_INDEX_DIMENSION ?? '768');
+
 async function embedText(text: string): Promise<number[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
   const response = await ai.models.embedContent({
     model: 'gemini-embedding-001',
     contents: [text],
+    config: {
+      outputDimensionality: embeddingDimension,
+    },
   });
 
   const values = response.embeddings?.[0]?.values;
