@@ -1,0 +1,1 @@
+declare module 'pdf-parse' {\n  interface PDFInfo {\n    numpages?: number;\n    numrender?: number;\n    info?: any;\n    metadata?: any;\n    version?: string;\n    text?: string;\n  }\n\n  function pdfParse(dataBuffer: Buffer | Uint8Array | ArrayBuffer): Promise<PDFInfo>;\n\n  export default pdfParse;\n}\n
