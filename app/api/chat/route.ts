@@ -3,28 +3,42 @@ import { GoogleGenAI } from '@google/genai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { convertToModelMessages, streamText, type UIMessage } from 'ai';
 
-const embeddingDimension = Number(process.env.PINECONE_INDEX_DIMENSION ?? '768');
+import { config } from '@/lib/config';
+import { logger } from '@/lib/logger';
 
 async function embedText(text: string): Promise<number[]> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY! });
-  const response = await ai.models.embedContent({
-    model: 'gemini-embedding-001',
-    contents: [text],
-    config: {
-      outputDimensionality: embeddingDimension,
-    },
+  const ai = new GoogleGenAI({
+    apiKey: config.googleApiKey,
   });
 
-  const values = response.embeddings?.[0]?.values;
-  if (!values) {
-    throw new Error('Failed to generate embedding for query');
-  }
+  try {
+    const response = await ai.models.embedContent({
+      model: config.googleEmbeddingModel,
+      contents: [text],
+      config: {
+        outputDimensionality: config.pineconeIndexDimension,
+      },
+    });
 
-  return values;
+    const values = response.embeddings?.[0]?.values;
+    if (!values) {
+      throw new Error('Failed to generate embedding for query');
+    }
+
+    return values;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown embedding error';
+    logger.error('Query embedding failed', {
+      textLength: text.length,
+      model: config.googleEmbeddingModel,
+      message,
+    });
+    throw error;
+  }
 }
 
 function getLastUserMessageText(messages: UIMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i];
     if (message.role === 'user') {
       const textParts = message.parts
@@ -33,38 +47,77 @@ function getLastUserMessageText(messages: UIMessage[]): string {
       return textParts.join('');
     }
   }
+
   return '';
 }
 
-export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
-
-  const queryText = getLastUserMessageText(messages);
-  const queryEmbedding = await embedText(queryText);
-
-  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-  const index = pinecone.index(process.env.PINECONE_INDEX_NAME ?? 'banking-guidelines');
-
-  const queryResult = await index.query({
-    vector: queryEmbedding,
-    topK: 3,
-    includeMetadata: true,
-  });
-
-  const retrievedContext = queryResult.matches
+function formatRetrievedContext(matches: { metadata?: Record<string, unknown> }[]): string {
+  return matches
     .map((match) => {
-      const meta = match.metadata as { text?: string; policyId?: string; category?: string };
-      return `[${meta.policyId ?? 'Unknown'}] (${meta.category ?? 'General'}): ${meta.text ?? ''}`;
+      const meta = match.metadata as { text?: string; policyId?: string; category?: string } | undefined;
+      return `[${meta?.policyId ?? 'Unknown'}] (${meta?.category ?? 'General'}): ${meta?.text ?? ''}`;
     })
     .join('\n\n');
+}
 
-  const systemPrompt = `You are an official Banking Compliance Assistant. Answer using ONLY retrieved policies: ${retrievedContext}. Always cite Policy IDs like [Policy: POL-ACC-001]. Refuse transactions.`;
+export async function POST(req: Request) {
+  const startedAt = Date.now();
 
-  const result = streamText({
-    model: google('gemini-2.5-flash'),
-    system: systemPrompt,
-    messages: await convertToModelMessages(messages),
-  });
+  try {
+    const body = (await req.json()) as { messages?: UIMessage[] };
+    const { messages } = body;
 
-  return result.toUIMessageStreamResponse();
+    if (!Array.isArray(messages) || messages.length === 0) {
+      logger.warn('Chat request rejected because messages were missing or empty');
+      return Response.json({ error: 'Messages are required.' }, { status: 400 });
+    }
+
+    const queryText = getLastUserMessageText(messages);
+    if (!queryText.trim()) {
+      logger.warn('Chat request rejected because the latest user message was empty');
+      return Response.json({ error: 'Please provide a question to continue.' }, { status: 400 });
+    }
+
+    logger.info('Processing chat request', {
+      messageCount: messages.length,
+      queryLength: queryText.length,
+    });
+
+    const queryEmbedding = await embedText(queryText);
+
+    const pinecone = new Pinecone({
+      apiKey: config.pineconeApiKey,
+    });
+    const index = pinecone.index(config.pineconeIndexName);
+
+    const queryResult = await index.query({
+      vector: queryEmbedding,
+      topK: config.pineconeTopK,
+      includeMetadata: true,
+    });
+
+    const retrievedContext = formatRetrievedContext(queryResult.matches ?? []);
+    const systemPrompt = `You are an official Banking Compliance Assistant. Answer using ONLY retrieved policies: ${retrievedContext}. Always cite Policy IDs like [Policy: POL-ACC-001]. Refuse transactions.`;
+
+    const result = streamText({
+      model: google(config.googleChatModel),
+      system: systemPrompt,
+      messages: await convertToModelMessages(messages),
+    });
+
+    logger.info('Chat request completed successfully', {
+      durationMs: Date.now() - startedAt,
+      matchesReturned: queryResult.matches?.length ?? 0,
+    });
+
+    return result.toUIMessageStreamResponse();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown chat error';
+    logger.error('Chat request failed', {
+      durationMs: Date.now() - startedAt,
+      message,
+    });
+
+    return Response.json({ error: 'Unable to process your request right now.' }, { status: 500 });
+  }
 }
