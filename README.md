@@ -63,14 +63,24 @@ npm install
 
 ### 2. Configure environment variables
 
-Create `.env.local` in the project root:
+Copy `.env.example` to `.env.local` and fill in the values for your environment:
 
 ```env
+APP_NAME="banking-rag-assistant"
 GOOGLE_GENERATIVE_AI_API_KEY="your-google-api-key"
+GOOGLE_EMBEDDING_MODEL="gemini-embedding-001"
+GOOGLE_CHAT_MODEL="gemini-2.5-flash"
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_NAME="banking-guidelines"
 PINECONE_INDEX_DIMENSION="768"
+PINECONE_TOP_K="3"
+RAG_CHUNK_SIZE="700"
+RAG_CHUNK_OVERLAP="100"
+RAG_UPSERT_BATCH_SIZE="100"
+API_ROUTE_TIMEOUT_MS="60000"
 ```
+
+All runtime settings now come from environment variables instead of hardcoded values in the application code.
 
 ### 3. Create Pinecone index
 
@@ -107,6 +117,8 @@ app/
 components/
   banking-chat.tsx     # Dark-themed compliance chat interface
 lib/
+  config.ts           # Centralized environment configuration
+  logger.ts           # Structured application logging
   rag/
     types.ts           # BankingChunk interface
     sample-documents.ts # Four detailed banking policies
