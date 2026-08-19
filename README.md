@@ -1,5 +1,7 @@
 # Enterprise Banking RAG Assistant
 
+![Demo](/assets/demo.gif)
+
 A policy-grounded banking compliance chatbot built with Next.js App Router, Vercel AI SDK, Groq, Google Gemini embeddings, and Pinecone vector search.
 
 ## Architecture
