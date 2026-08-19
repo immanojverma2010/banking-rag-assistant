@@ -1,4 +1,4 @@
-  import { google } from '@ai-sdk/google';
+import { groq } from '@ai-sdk/groq';
 import { GoogleGenAI } from '@google/genai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { convertToModelMessages, streamText, type UIMessage } from 'ai';
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     );
 
     requestLogger.info('Sending LLM request', {
-      model: config.googleChatModel,
+      model: config.groqChatModel,
       messageCount: modelMessages.length,
       contextLength: systemPrompt.length,
       retrievedMatches: queryResult.matches?.length ?? 0,
@@ -128,12 +128,12 @@ export async function POST(req: Request) {
 
     const llmStartedAt = Date.now();
     const result = streamText({
-      model: google(config.googleChatModel),
+      model: groq(config.groqChatModel),
       system: systemPrompt,
       messages: modelMessages,
     });
     requestLogger.info('LLM response stream started', {
-      model: config.googleChatModel,
+      model: config.groqChatModel,
       durationMs: Date.now() - llmStartedAt,
       retrievedMatches: queryResult.matches?.length ?? 0,
     });
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
     requestLogger.info('Chat request completed successfully', {
       durationMs: Date.now() - startedAt,
       matchesReturned: queryResult.matches?.length ?? 0,
-      model: config.googleChatModel,
+      model: config.groqChatModel,
     });
 
     return result.toUIMessageStreamResponse();

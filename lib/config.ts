@@ -31,11 +31,12 @@ const getNumberEnv = (key: string, fallback: number): number => {
 export const config = {
   appName: getStringEnv('APP_NAME', 'banking-rag-assistant'),
   googleApiKey: getStringEnv('GOOGLE_GENERATIVE_AI_API_KEY'),
+  groqApiKey: getStringEnv('GROQ_API_KEY'),
   pineconeApiKey: getStringEnv('PINECONE_API_KEY'),
   pineconeIndexName: getStringEnv('PINECONE_INDEX_NAME', 'banking-guidelines'),
   pineconeIndexDimension: getNumberEnv('PINECONE_INDEX_DIMENSION', 768),
   googleEmbeddingModel: getStringEnv('GOOGLE_EMBEDDING_MODEL', 'gemini-embedding-001'),
-  googleChatModel: getStringEnv('GOOGLE_CHAT_MODEL', 'gemini-2.5-flash'),
+  groqChatModel: getStringEnv('GROQ_CHAT_MODEL', 'llama-3.3-70b-versatile'),
   pineconeTopK: getNumberEnv('PINECONE_TOP_K', 3),
   ragChunkSize: getNumberEnv('RAG_CHUNK_SIZE', 700),
   ragChunkOverlap: getNumberEnv('RAG_CHUNK_OVERLAP', 100),

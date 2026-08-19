@@ -2,8 +2,17 @@
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { Bot, Landmark, Send, ShieldCheck, User } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Bot, Landmark, Send, User } from 'lucide-react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,46 +34,65 @@ type MessageBubbleProps = {
     parts: Array<{ type?: string; text?: string }>;
   };
   isGenerating: boolean;
+  isLatestAssistantMessage: boolean;
 };
 
-const MessageBubble = memo(function MessageBubble({ message, isGenerating }: MessageBubbleProps) {
+const MessageBubble = memo(function MessageBubble({
+  message,
+  isGenerating,
+  isLatestAssistantMessage,
+}: MessageBubbleProps) {
   if (message.role !== 'user' && message.role !== 'assistant') {
     return null;
   }
 
+  const shouldAnimate =
+    message.role === 'assistant' && isGenerating && isLatestAssistantMessage && message.parts.some(part => part.type === 'text');
+
   return (
     <div className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
       <div
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-          message.role === 'user'
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'bg-emerald-500/20 text-emerald-400'
-        }`}
+        className={`message-avatar ${message.role === 'user' ? 'message-avatar-user' : 'message-avatar-assistant'}`}
       >
         {message.role === 'user' ? <User className="size-4" /> : <Bot className="size-4" />}
       </div>
       <div
-        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-          message.role === 'user'
-            ? 'bg-blue-600/20 text-slate-100'
-            : 'bg-slate-800 text-slate-200'
-        }`}
+        className={`message-bubble ${message.role === 'user' ? 'message-bubble-user' : 'message-bubble-assistant'}`}
       >
         {message.parts.map((part, index) => {
-          if (part.type !== 'text') return null;
+         if (part.type !== 'text') return null;
 
-          return (
-            <span
-              key={`${message.id}-${index}`}
-              className={
-                message.role === 'assistant' && isGenerating
-                  ? 'typing-slow whitespace-pre-wrap'
-                  : 'whitespace-pre-wrap'
-              }
-            >
-              {part.text}
-            </span>
-          );
+         const rawText = part.text ?? '';
+         const tokens = rawText.split(/(\s+)/);
+
+         if (!shouldAnimate || tokens.every(token => token.trim() === '')) {
+           return (
+             <span key={`${message.id}-${index}`} className="whitespace-pre-wrap">
+               {part.text}
+             </span>
+           );
+         }
+
+         let wordIndex = 0;
+
+         return (
+           <span key={`${message.id}-${index}`} className="whitespace-pre-wrap">
+             {tokens.map((token, tokenIndex) => {
+               if (token.trim() === '') {
+                 return <span key={`${message.id}-${index}-${tokenIndex}`}>{token}</span>;
+               }
+
+               const style = { ['--i' as string]: String(wordIndex) } as CSSProperties;
+               wordIndex += 1;
+
+               return (
+                 <span key={`${message.id}-${index}-${tokenIndex}`} className="word-stream" style={style}>
+                   {token}
+                 </span>
+               );
+             })}
+           </span>
+         );
         })}
       </div>
     </div>
@@ -88,7 +116,7 @@ const SuggestionPill = memo(function SuggestionPill({
       type="button"
       onClick={() => onClick(suggestion)}
       disabled={disabled}
-      className="rounded-full border border-slate-700 bg-slate-800/50 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-50"
+      className="chat-suggestion-pill"
     >
       {suggestion}
     </button>
@@ -115,6 +143,11 @@ export function BankingChat() {
     if (messages.length > 0) return 'Ready';
     return 'Idle';
   }, [messages.length, status]);
+
+  const latestAssistantMessageId = useMemo(() => {
+    const lastMessage = messages.at(-1);
+    return lastMessage && lastMessage.role === 'assistant' ? lastMessage.id : null;
+  }, [messages]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -148,41 +181,33 @@ export function BankingChat() {
   const suggestions = useMemo(() => SUGGESTIONS, []);
 
   return (
-    <div className="flex h-full items-center justify-center bg-slate-950 p-4 text-slate-100">
-      <Card className="flex h-full max-h-[900px] w-full max-w-3xl flex-col border-slate-800 bg-slate-900 text-slate-100 ring-slate-800">
-        <CardHeader className="border-b border-slate-800">
-          <div className="flex items-center justify-between">
+    <div className="banking-chat-shell">
+      <Card className="banking-chat-card">
+        <CardHeader className="banking-chat-header">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10">
-                <Landmark className="size-5 text-emerald-400" />
+              <div className="banking-chat-brand-icon">
+                <Landmark className="size-4" />
               </div>
               <div>
-                <CardTitle className="text-lg text-slate-100">
+                <CardTitle className="banking-chat-title">
                   Enterprise Banking Compliance Assistant
                 </CardTitle>
-                <p className="text-xs text-slate-400">
+                <p className="banking-chat-subtitle">
                   Policy-grounded answers from official banking guidelines
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge
-                className={
-                  streamState === 'Error'
-                    ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                    : streamState === 'Streaming' || streamState === 'Sending'
-                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                }
-              >
-                <ShieldCheck className="size-3" />
+              <Badge className="banking-chat-status-badge">
+                <span className="banking-chat-status-dot" />
                 {streamState}
               </Badge>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-0">
+        <CardContent className="banking-chat-content">
           <ScrollArea viewportRef={viewportRef} className="px-4 py-4">
             <div className="flex flex-col gap-4">
               {messages.length === 0 && (
@@ -196,19 +221,24 @@ export function BankingChat() {
               )}
 
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} isGenerating={isGenerating} />
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isGenerating={isGenerating}
+                  isLatestAssistantMessage={message.id === latestAssistantMessageId}
+                />
               ))}
 
               {isGenerating && messages.at(-1)?.role !== 'assistant' && (
                 <div className="flex gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                  <div className="message-avatar message-avatar-assistant">
                     <Bot className="size-4" />
                   </div>
-                  <div className="rounded-xl bg-slate-800 px-4 py-3">
+                  <div className="chat-typing-indicator">
                     <span className="inline-flex gap-1">
-                      <span className="size-2 animate-bounce rounded-full bg-emerald-400 [animation-delay:0ms]" />
-                      <span className="size-2 animate-bounce rounded-full bg-emerald-400 [animation-delay:150ms]" />
-                      <span className="size-2 animate-bounce rounded-full bg-emerald-400 [animation-delay:300ms]" />
+                      <span className="chat-typing-dot chat-typing-dot-1" />
+                      <span className="chat-typing-dot chat-typing-dot-2" />
+                      <span className="chat-typing-dot chat-typing-dot-3" />
                     </span>
                   </div>
                 </div>
@@ -216,7 +246,7 @@ export function BankingChat() {
             </div>
           </ScrollArea>
 
-          <div className="flex flex-wrap gap-2 border-t border-slate-800 px-4 py-3">
+          <div className="banking-chat-suggestions">
             {suggestions.map((suggestion) => (
               <SuggestionPill
                 key={suggestion}
@@ -228,19 +258,19 @@ export function BankingChat() {
           </div>
         </CardContent>
 
-        <CardFooter className="border-t border-slate-800 p-4">
-          <form onSubmit={handleSubmit} className="flex w-full gap-2">
+        <CardFooter className="banking-chat-footer">
+          <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
             <Input
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask about banking policies..."
               disabled={isGenerating}
-              className="flex-1 border-slate-700 bg-slate-800 text-slate-100 placeholder:text-slate-500"
+              className="banking-chat-input"
             />
             <Button
               type="submit"
               disabled={!input.trim() || isGenerating}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
+              className="banking-chat-send-button"
             >
               <Send className="size-4" />
             </Button>

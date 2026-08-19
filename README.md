@@ -1,6 +1,6 @@
 # Enterprise Banking RAG Assistant
 
-A policy-grounded banking compliance chatbot built with Next.js App Router, Vercel AI SDK, Google Gemini, and Pinecone vector search.
+A policy-grounded banking compliance chatbot built with Next.js App Router, Vercel AI SDK, Groq, Google Gemini embeddings, and Pinecone vector search.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ This application implements a **Retrieval-Augmented Generation (RAG)** pipeline 
 flowchart LR
   subgraph ingest [Ingestion]
     Docs[Sample Policies] --> Split[LangChain Text Splitter]
-    Split --> Embed[gemini-embedding-00101]
+    Split --> Embed[gemini-embedding-001]
     Embed --> Pinecone[Pinecone Index]
   end
 
@@ -18,7 +18,7 @@ flowchart LR
     User[User Query] --> QEmbed[Query Embedding]
     QEmbed --> Search[Pinecone topK=3]
     Search --> Prompt[System Prompt + Context]
-    Prompt --> LLM[gemini-3.6-flash]
+    Prompt --> LLM[Groq Llama 3.3 70B]
     LLM --> SSE[SSE Stream]
   end
 ```
@@ -31,14 +31,14 @@ flowchart LR
 
 ### Retrieval & Generation
 
-1. The user's latest message is embedded with the same model.
+1. The user's latest message is embedded with the same Google Gemini embedding model.
 2. Pinecone returns the top 3 most similar policy chunks (`topK: 3`, `includeMetadata: true`).
 3. Retrieved context is injected into a compliance system prompt that instructs the model to cite policy IDs and refuse transactions.
-4. `gemini-3.6-flash` generates a streaming response via the Vercel AI SDK.
+4. Groq-hosted Llama 3.3 70B generates a streaming response through the Vercel AI SDK.
 
 ### SSE Streaming
 
-- **Server**: `streamText()` from the `ai` package streams tokens from Gemini; `toUIMessageStreamResponse()` sends them to the client over Server-Sent Events.
+- **Server**: `streamText()` from the `ai` package streams tokens from Groq; `toUIMessageStreamResponse()` sends them to the client over Server-Sent Events.
 - **Client**: `useChat()` from `@ai-sdk/react` with `DefaultChatTransport` consumes the stream and renders token-by-token updates in the chat UI.
 
 ## Tech Stack
@@ -46,7 +46,7 @@ flowchart LR
 | Layer | Technology |
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
-| LLM | Gemini 2.5 Flash via `@ai-sdk/google` |
+| LLM | Groq Llama 3.3 70B via `@ai-sdk/groq` |
 | Embeddings | gemini-embedding-001 via `@google/genai` |
 | Vector DB | Pinecone (`@pinecone-database/pinecone`) |
 | Orchestration | Vercel AI SDK (`ai`, `@ai-sdk/react`) |
@@ -69,7 +69,8 @@ Copy `.env.example` to `.env.local` and fill in the values for your environment:
 APP_NAME="banking-rag-assistant"
 GOOGLE_GENERATIVE_AI_API_KEY="your-google-api-key"
 GOOGLE_EMBEDDING_MODEL="gemini-embedding-001"
-GOOGLE_CHAT_MODEL="gemini-2.5-flash"
+GROQ_API_KEY="your-groq-api-key"
+GROQ_CHAT_MODEL="llama-3.3-70b-versatile"
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_INDEX_NAME="banking-guidelines"
 PINECONE_INDEX_DIMENSION="768"

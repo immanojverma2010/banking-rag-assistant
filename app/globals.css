@@ -129,22 +129,249 @@
   }
 }
 
-@keyframes typing-slow {
+@keyframes word-in {
   0% {
-    max-width: 0;
-    opacity: 0.4;
-    filter: blur(0.5px);
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(2px);
   }
   100% {
-    max-width: 100ch;
     opacity: 1;
     filter: blur(0);
+    transform: translateY(0);
   }
 }
 
-.typing-slow {
+.word-stream {
   display: inline-block;
+  animation: word-in 300ms ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+
+body {
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.mono,
+.policy-badge,
+.banking-chat-title,
+.banking-chat-subtitle,
+.banking-chat-status-badge,
+.word-stream,
+.banking-chat-input,
+.banking-chat-send-button {
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.banking-chat-shell {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: #f3f1ee;
+  padding: 1rem;
+  color: #1f2327;
+}
+
+.banking-chat-card {
+  display: flex;
+  height: 100%;
+  max-height: 900px;
+  width: 100%;
+  max-width: 48rem;
+  flex-direction: column;
+  border: 1px solid #dfe3df;
+  background: #f9f8f6;
+  color: #1f2327;
+  box-shadow: none;
+  border-radius: 0.75rem;
+}
+
+.banking-chat-header {
+  border-bottom: 1px solid #e1e3df;
+  padding: 1rem 1.25rem;
+}
+
+.banking-chat-brand-icon {
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid #d4e9ee;
+  background: #dff2f9;
+  color: #3a9fc1;
+}
+
+.banking-chat-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1f2327;
+}
+
+.banking-chat-subtitle {
+  font-size: 0.75rem;
+  color: #5a646d;
+}
+
+.banking-chat-status-badge {
+  border: 1px solid #cfead8;
+  background: #e9f8ee;
+  color: #2f7b5b;
+  box-shadow: none;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.banking-chat-status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #4ab77d;
+  margin-right: 0.375rem;
+}
+
+.banking-chat-content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
   overflow: hidden;
-  white-space: pre-wrap;
-  animation: typing-slow 1.8s steps(36, end) both;
+  background: #f5f4f2;
+  padding: 0;
+}
+
+.message-avatar {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+
+.message-avatar-user {
+  border-color: #abdff2;
+  background: #dff4fb;
+  color: #0f7aa5;
+}
+
+.message-avatar-assistant {
+  border-color: #d8e0dc;
+  background: #f2f4f2;
+  color: #2d4b55;
+}
+
+.message-bubble {
+  max-width: 78%;
+  border-radius: 1.625rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.message-bubble-user {
+  background: #5ab4d7;
+  color: white;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.message-bubble-assistant {
+  border: 1px solid #dfe4e1;
+  background: #f8f8f6;
+  color: #1a1f23;
+}
+
+.chat-suggestion-pill {
+  border-radius: 9999px;
+  border: 1px solid #8ec6d9;
+  background: transparent;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: #2c4d5d;
+  transition: all 0.2s ease;
+}
+
+.chat-suggestion-pill:hover {
+  border-color: #5ab4d7;
+  background: #eaf7fb;
+}
+
+.chat-suggestion-pill:disabled {
+  opacity: 0.5;
+}
+
+.banking-chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid #e1e3df;
+  background: #f5f4f2;
+  padding: 0.75rem 1rem;
+}
+
+.chat-typing-indicator {
+  border-radius: 1.25rem;
+  border: 1px solid #dfe4e1;
+  background: #f8f8f6;
+  padding: 0.75rem 1rem;
+}
+
+.chat-typing-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #57b6d4;
+  animation: bounce 1s infinite ease-in-out;
+}
+
+.chat-typing-dot-1 { animation-delay: 0ms; }
+.chat-typing-dot-2 { animation-delay: 150ms; }
+.chat-typing-dot-3 { animation-delay: 300ms; }
+
+.banking-chat-footer {
+  border-top: 1px solid #e1e3df;
+  background: #f5f4f2;
+  padding: 1rem;
+}
+
+.banking-chat-input {
+  height: 3rem;
+  flex: 1;
+  border-radius: 9999px;
+  border: 1px solid #d7e2e4;
+  background: white;
+  color: #1f2327;
+  font-size: 0.875rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.banking-chat-input::placeholder {
+  color: #7b8790;
+}
+
+.banking-chat-send-button {
+  height: 3rem;
+  border-radius: 9999px;
+  background: #5ab4d7;
+  color: white;
+  box-shadow: none;
+}
+
+.banking-chat-send-button:hover {
+  background: #48a9cb;
+}
+
+.banking-chat-send-button:disabled {
+  opacity: 0.5;
 }
